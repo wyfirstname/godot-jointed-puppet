@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>前后关系设计器 · 关节人偶</title>
+<style>
+  :root{
+    --bg:#14161b; --bg2:#1b1e25; --bg3:#22262f; --line:#31363f;
+    --fg:#dfe3ea; --fg2:#98a0ae; --acc:#6aa8ff; --ok:#5fd39a; --bad:#ff6b6b;
+    --warn:#f2c14e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+    font:13px/1.45 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif}
+  #app{display:flex;flex-direction:column;height:100%}
+
+  header{display:flex;align-items:center;gap:14px;padding:9px 14px;
+    background:var(--bg2);border-bottom:1px solid var(--line);flex:0 0 auto}
+  header h1{font-size:13px;font-weight:600;margin:0;letter-spacing:.02em}
+  header .tag{color:var(--fg2);font-size:11px}
+  .spacer{flex:1}
+  button{background:var(--bg3);color:var(--fg);border:1px solid var(--line);
+    border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer}
+  button:hover{border-color:#4a5262;background:#2a2f3a}
+  button.primary{background:#27406b;border-color:#3a5d99}
+  button.primary:hover{background:#2f4d80}
+  input[type=range]{width:130px;accent-color:var(--acc)}
+  input[type=number]{width:46px;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:2px 4px;font-size:12px;
+    text-align:right;font-variant-numeric:tabular-nums}
+  input[type=number]:focus{outline:1px solid var(--acc);border-color:var(--acc)}
+  label.chk{display:flex;align-items:center;gap:5px;color:var(--fg2);font-size:12px;cursor:pointer}
+
+  main{display:flex;flex:1;min-height:0}
+  #stage{flex:1;display:grid;grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(2,1fr);gap:6px;padding:12px;min-width:0}
+  .cell{position:relative;background:var(--bg2);border:1px solid var(--line);
+    border-radius:8px;overflow:hidden}
+  .cell .lab{position:absolute;left:7px;top:5px;font-size:11px;color:var(--fg2);
+    letter-spacing:.06em;z-index:9999}
+  .cell .lab b{color:var(--fg)}
+  /* 右上角：这个视图里部件两两真正叠在一起的像素数。0 表示改 z 什么都看不出 */
+  .cell .ov{position:absolute;right:7px;top:5px;font-size:10.5px;color:#6b7381;
+    z-index:9999;font-variant-numeric:tabular-nums;text-align:right;line-height:1.5}
+  .cell .ov b{color:var(--acc);font-weight:600}
+  .cell .ov.zero b{color:#6b7381}
+  /* 改完数值闪一下：否则数字改了画面不动，分不清「没生效」还是「本来就看不出」 */
+  @keyframes fl{
+    0%{filter:drop-shadow(0 0 0 rgba(106,168,255,0))}
+    35%{filter:drop-shadow(0 0 7px rgba(106,168,255,.95))}
+    100%{filter:drop-shadow(0 0 0 rgba(106,168,255,0))}
+  }
+  .box img.fl{animation:fl .5s ease-out}
+  /* 居中靠 left/right+margin:auto，不靠 translate(-50%) —— 后者会和 scaleX(-1)
+     在变换列表里互相干扰（镜像那三格会偏到一边去）*/
+  .box{position:absolute;left:50%;top:-28px;width:256px;height:256px;margin-left:-128px;
+    transform-origin:50% 0;pointer-events:none}
+  .box img{position:absolute;left:0;top:0;width:256px;height:256px;
+    image-rendering:auto;transform-origin:0 0;transition:opacity .12s}
+
+  aside{width:472px;flex:0 0 auto;border-left:1px solid var(--line);
+    display:flex;flex-direction:column;background:var(--bg2)}
+  aside .bar{display:flex;align-items:center;gap:8px;padding:8px 10px;
+    border-bottom:1px solid var(--line);font-size:12px;color:var(--fg2)}
+  .scroll{overflow:auto;flex:1}
+  table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+  th,td{padding:2px 5px;text-align:right;border-bottom:1px solid #23272f}
+  thead th{position:sticky;top:0;background:var(--bg2);z-index:2;
+    font-weight:500;color:var(--fg2);font-size:11px;padding:6px 5px}
+  /* 点列头 = 换排序基准：表格按那一列排，相邻的层才挨在一起 */
+  thead th.sortable{cursor:pointer;user-select:none}
+  thead th.sortable:hover{color:var(--fg)}
+  thead th.on{color:var(--acc)}
+  thead th.on::after{content:" ↓";font-size:9px;opacity:.8}
+  tbody tr:hover{background:#1f232b}
+  tbody tr.on{background:#23304a}
+  /* 同层的行成块，层与层之间一道亮线 */
+  tbody tr.sep td{border-top:1px solid #3d4757}
+  td.name{text-align:left;cursor:pointer;white-space:nowrap;color:var(--fg)}
+  td.name .dot{display:inline-block;width:7px;height:7px;border-radius:2px;
+    margin-right:6px;vertical-align:1px}
+  td.name .gap{color:var(--fg2);font-size:10px;margin-left:5px}
+  td.z{width:52px}
+  #issues{padding:8px 10px;border-top:1px solid var(--line);max-height:150px;
+    overflow:auto;font-size:11.5px;line-height:1.6}
+  #issues .ok{color:var(--ok)}
+  #issues .bad{color:var(--bad)}
+  #issues .row{color:var(--fg2)}
+  #swing{padding:8px 10px;border-top:1px solid var(--line);font-size:12px}
+  #swing .hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--fg2)}
+  #swing .rule{display:flex;align-items:center;gap:5px;margin:4px 0;color:var(--fg2)}
+  #swing .rule b{color:var(--fg);font-weight:500}
+  #swing .empty{color:#6b7381}
+  footer{padding:6px 10px;border-top:1px solid var(--line);color:#6b7381;font-size:11px}
+  dialog{background:var(--bg2);color:var(--fg);border:1px solid var(--line);
+    border-radius:10px;padding:14px;width:520px}
+  dialog textarea{width:100%;height:260px;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:6px;font:11.5px/1.4 ui-monospace,Consolas,monospace;
+    padding:8px;resize:vertical}
+  .dlgrow{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>前后关系设计器</h1>
+    <span class="tag">数字越大越靠近镜头 · 点行名只看那一块</span>
+    <span class="spacer"></span>
+    <label class="chk" title="按 z 值把各层错开，像一叠卡片；重叠为 0 的格子也能看出先后">
+      错位 <input id="explode" type="range" min="0" max="100" value="0" style="width:86px"></label>
+    <label class="chk">相位 <input id="phase" type="range" min="0" max="1" step="0.005" value="0.25"></label>
+    <label class="chk"><input id="play" type="checkbox"> 播放</label>
+    <label class="chk"><input id="dim" type="checkbox" checked> 淡化非焦点</label>
+    <button id="btnExport" class="primary">导出 JSON</button>
+    <button id="btnOpen">打开 JSON</button>
+    <input id="fileIn" type="file" accept=".json,application/json" hidden>
+    <button id="btnImport">粘贴</button>
+    <button id="btnReset">还原</button>
+  </header>
+
+  <main>
+    <div id="stage"></div>
+    <aside>
+      <div class="bar">
+        <span>z 序矩阵</span>
+        <span class="spacer"></span>
+        <span id="hint" style="color:#6b7381">点列头/预览格换排序 · ↑↓ 微调</span>
+      </div>
+      <div class="scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+      <div id="issues"></div>
+      <div id="swing"></div>
+      <footer>改完点「导出 JSON」→ 覆盖 data/layer_rules.json → 跑 <code>zdump.gd</code> 复核。
+        格角「重叠 Npx」是这格里部件真正叠在一起的像素数，<b style="color:#6b7381">0 就说明改 z 不会有视觉变化</b>。</footer>
+    </aside>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <div style="margin-bottom:8px;color:#98a0ae">把下面的内容存成 <code>data/layer_rules.json</code></div>
+  <textarea id="json"></textarea>
+  <div class="dlgrow">
+    <button id="dlgCopy">复制</button>
+    <button id="dlgClose">关闭</button>
+  </div>
+</dialog>
+
+<script>
+const ASSETS = /*__ASSETS__*/{};
+const RULES  = /*__RULES__*/{};
+const RIG    = /*__RIG__*/{};
+const OVERLAP = /*__OVERLAP__*/{};
+
+const SLOTS = RIG.slots;              // 槽位顺序（按默认 z 从后到前）
+const VIEWS = RIG.views;              // ["s","sw","w","nw","n"]
+const DIRS  = ["S","SW","W","NW","N","NE","E","SE"];
+const NEAR  = RIG.near_side;          // 视图 -> ""|"l"|"r"
+const BACKD = RIG.back_dirs;          // [3,4,5]
+
+// "a|b" -> 该视图下这两个部件叠在一起的像素数（打包时算好）
+const OV = {};
+for (const v in OVERLAP){
+  const m = {};
+  for (const p of OVERLAP[v]){ m[p[0]+'|'+p[1]] = p[2]; m[p[1]+'|'+p[0]] = p[2]; }
+  OV[v] = m;
+}
+
+// z[view][slot]
+const z = JSON.parse(JSON.stringify(RULES.z));
+const swing = JSON.parse(JSON.stringify(RULES.swing || []));
+const original = JSON.parse(JSON.stringify({z: RULES.z, swing: RULES.swing || []}));
+
+/* ---------- 2D 仿射：和 Godot 的 Node2D 变换一一对应 ---------- */
+const I = [1,0,0,1,0,0];
+const T = (x,y)=>[1,0,0,1,x,y];
+const R = t=>[Math.cos(t),Math.sin(t),-Math.sin(t),Math.cos(t),0,0];
+function mul(A,B){return [
+  A[0]*B[0]+A[2]*B[1], A[1]*B[0]+A[3]*B[1],
+  A[0]*B[2]+A[2]*B[3], A[1]*B[2]+A[3]*B[3],
+  A[0]*B[4]+A[2]*B[5]+A[4], A[1]*B[4]+A[3]*B[5]+A[5]];}
+const rad = d=>d*Math.PI/180;
+
+/* ---------- 建 DOM ---------- */
+const stage = document.getElementById('stage');
+const boxes = [];   // 每个方向：{el, imgs:{slot:img}}
+for (let d=0; d<8; d++){
+  const cell = document.createElement('div');
+  cell.className='cell';
+  const lab = document.createElement('div');
+  lab.className='lab';
+  lab.innerHTML = `<b>${DIRS[d]}</b> <span></span>`;
+  cell.appendChild(lab);
+  const ovTag = document.createElement('div');
+  ovTag.className='ov';
+  cell.appendChild(ovTag);
+  const box = document.createElement('div');
+  box.className='box';
+  // 先缩放再镜像：两者都以「顶部中心」为原点，所以镜像不会把整只推到隔壁格
+  box.style.transform = 'scale(1.22)' + (RIG.dir_to_view[d][1] ? ' scaleX(-1)' : '');
+  cell.appendChild(box);
+  // 点预览格 = 把表格的排序基准切到这个视图的列
+  const dv = RIG.dir_to_view[d][0];
+  cell.style.cursor = 'pointer';
+  cell.title = `点一下：表格按 ${VIEWS[dv]} 列排序`;
+  cell.addEventListener('click', ()=>setSortView(VIEWS[dv]));
+  stage.appendChild(cell);
+  boxes.push({cell, lab, ov:ovTag, box, imgs:{}});
+}
+
+/* ---------- 表格 ---------- */
+const tbl = document.getElementById('tbl');
+const thead = tbl.querySelector('thead');
+const tbody = tbl.querySelector('tbody');
+
+/* 排序基准：表格按哪个视图的 z 排。
+   只按 n 排的话，切到 s / w 列看时「相邻的层」在表里是散开的 —— 读不出层次链。
+   点列头或点预览格都能换基准。 */
+let sortView = 'n';
+
+function sortSlots(){
+  return SLOTS.slice().sort((a,b)=>{
+    const za = z[sortView][a] ?? 0, zb = z[sortView][b] ?? 0;
+    if (zb !== za) return zb - za;              // z 大的在上（靠镜头）
+    return SLOTS.indexOf(a) - SLOTS.indexOf(b); // 同层保持原序，行不来回跳
+  });
+}
+
+function paintHead(){
+  for (const th of thead.querySelectorAll('th[data-v]'))
+    th.classList.toggle('on', th.dataset.v === sortView);
+}
+
+function setSortView(v){
+  if (sortView === v) return;
+  sortView = v;
+  if (document.activeElement && document.activeElement.tagName==='INPUT')
+    document.activeElement.blur();     // 先收掉编辑态，行才敢重排
+  paintHead();
+  refresh();
+}
+
+function buildTable(){
+  thead.innerHTML = '<tr><th style="text-align:left">槽位</th>' +
+    VIEWS.map(v=>`<th data-v="${v}" class="sortable">${v}</th>`).join('') + '</tr>';
+  for (const th of thead.querySelectorAll('th[data-v]'))
+    th.addEventListener('click', ()=>setSortView(th.dataset.v));
+  tbody.innerHTML='';
+  const rows = sortSlots();
+  for (const s of rows){
+    const tr = document.createElement('tr');
+    tr.dataset.slot = s;
+    const td = document.createElement('td');
+    td.className='name';
+    td.innerHTML = `<span class="dot"></span>${s}<span class="gap">${RIG.slot_joint[s]||'—'}</span>`;
+    tr.appendChild(td);
+    for (const v of VIEWS){
+      const c = document.createElement('td');
+      c.className='z';
+      const inp = document.createElement('input');
+      inp.type='number'; inp.step=1; inp.value = z[v][s] ?? 0;
+      // 输错（空、"-"、字母）时 parseInt 会得到 NaN，zIndex 就变成非法值、
+      // 层序会悄悄退回 DOM 顺序 —— 所以先夹一遍再用
+      inp.addEventListener('input', ()=>setZ(v, s, inp.value, true));
+      inp.addEventListener('keydown', e=>{
+        if (e.key==='ArrowUp'||e.key==='ArrowDown'){
+          e.preventDefault();
+          inp.value = (parseInt(inp.value||'0',10)||0) + (e.key==='ArrowUp'?1:-1);
+          setZ(v, s, inp.value, true);
+        }
+      });
+      // 打字期间不动行序（手指还在键盘上），离开这个格子再重排一次
+      inp.addEventListener('blur', ()=>refresh());
+      c.appendChild(inp);
+      tr.appendChild(c);
+    }
+    td.addEventListener('click', ()=>select(focus===s?null:s));
+    tbody.appendChild(tr);  }
+}
+
+/* ---------- 焦点 ---------- */
+let focus = null;
+function select(s){
+  focus = s;
+  for (const tr of tbody.children) tr.classList.toggle('on', tr.dataset.slot===s);
+  refresh();
+}
+
+/* ---------- 姿态 → 关节变换 ---------- */
+function pose(vi, ph){
+  const w = ph*Math.PI*2, p = RIG.profile[VIEWS[vi]];
+  const rot = {}, off = {};
+  let bob = 0, sway = 0;
+  if (p.mode === 0){
+    rot.hip_l = rad(p.leg*Math.sin(w));  rot.hip_r = rad(p.leg*Math.sin(w+Math.PI));
+    rot.knee_l = rad(-p.knee*Math.max(0,-Math.sin(w+0.55)));
+    rot.knee_r = rad(-p.knee*Math.max(0,-Math.sin(w+Math.PI+0.55)));
+    sway = 1.6;
+  } else {
+    off.hip_l = -(p.lift||0)*Math.max(0,Math.sin(w));
+    off.hip_r = -(p.lift||0)*Math.max(0,Math.sin(w+Math.PI));
+  }
+  rot.shoulder_l = rad(p.arm*Math.sin(w+Math.PI));
+  rot.shoulder_r = rad(p.arm*Math.sin(w));
+  /* 肘部：侧向视图（mode 0）**正角**=朝身前折（用户拍板翻转），常驻底弯+前摆加弯；
+     正/背面用小角度内收（左手负角、右手正角）。与 JointDoll._pose_walk 保持一致 */
+  if (p.mode === 0){
+    rot.elbow_l = rad( 20 + p.arm*0.5*(0.5-0.5*Math.sin(w)));
+    rot.elbow_r = rad( 20 + p.arm*0.5*(0.5+0.5*Math.sin(w)));
+  } else {
+    rot.elbow_l = rad(-p.arm*0.45*(0.5-0.5*Math.sin(w)));
+    rot.elbow_r = rad( p.arm*0.45*(0.5+0.5*Math.sin(w)));
+  }
+  rot.chest = rad(-sway*Math.sin(w));
+  rot.head  = rad( sway*Math.sin(w));
+  bob = p.bob*Math.sin(2*w + Math.PI*0.5);
+  return {rot, off, bob};
+}
+
+/* 关节世界矩阵：与 JointDoll._build_tree + _apply_rot 同一套局部坐标 */
+function jointMatrices(poseObj){
+  const J = RIG.joints, W = {};
+  for (const j of J){                       // 前序：父在前
+    const g = j.pos;
+    let local = T(g[0], g[1]);
+    if (j.parent){
+      const pg = J.find(x=>x.name===j.parent).pos;
+      local = T(g[0]-pg[0], g[1]-pg[1]);
+    }
+    if (j.name==='hip') local = mul(T(g[0], g[1] + poseObj.bob), I);
+    const o = poseObj.off[j.name];
+    if (o) local = mul(local, T(0,o));
+    const r = R(poseObj.rot[j.name]||0);
+    W[j.name] = j.parent ? mul(mul(W[j.parent], local), r) : mul(local, r);
+  }
+  return W;
+}
+
+/* ---------- 渲染 ---------- */
+/** 某视图里，某个槽位与其它所有部件真正叠在一起的像素总数。
+ *  0 意味着这一格的 z 改成多少都不会有视觉差别。 */
+function ovOf(view, slot){
+  const m = OV[view];
+  if (!m) return 0;
+  let t = 0;
+  for (const s of SLOTS) if (s !== slot) t += m[slot+'|'+s] || 0;
+  return t;
+}
+function ovTotal(view){
+  const m = OV[view];
+  if (!m) return 0;
+  let t = 0;
+  for (const k in m) t += m[k];
+  return t / 2;                 // 每对被算了两次
+}
+
+function render(){
+  const ph = parseFloat(document.getElementById('phase').value);
+  const dimOn = document.getElementById('dim').checked;
+  const k = parseFloat(document.getElementById('explode').value || '0') / 100;
+  for (let d=0; d<8; d++){
+    const [vi, mir] = RIG.dir_to_view[d];
+    const view = VIEWS[vi];
+    const W = jointMatrices(pose(vi, ph));
+    const b = boxes[d];
+    b.lab.innerHTML = `<b>${DIRS[d]}</b> <span style="color:#6b7381">${view}${mir?' 镜像':''}</span>`;
+    if (focus){
+      const n = ovOf(view, focus);
+      b.ov.innerHTML = `<b>${focus}</b> ⨯ ${n}px`;
+      b.ov.classList.toggle('zero', n === 0);
+    } else {
+      const n = ovTotal(view);
+      b.ov.innerHTML = `重叠 <b>${n}</b>px`;
+      b.ov.classList.toggle('zero', n === 0);
+    }
+    // 错位：按 z 值把这个视图里的各层沿「右上」推开，像一叠卡片。
+    // 不依赖像素重叠，所以正侧面这种本来不重叠的格子也能看出先后。
+    const zs = SLOTS.map(s=>z[view][s] ?? 0);
+    const lo = Math.min.apply(null, zs), hi = Math.max.apply(null, zs);
+    for (const slot of SLOTS){
+      const src = (ASSETS[slot]||{})[view];
+      let img = b.imgs[slot];
+      if (!src){ if (img){img.remove(); delete b.imgs[slot];} continue; }
+      if (!img){
+        img = document.createElement('img');
+        img.addEventListener('animationend', ()=>img.classList.remove('fl'));
+        b.box.appendChild(img);
+        b.imgs[slot] = img;
+      }
+      if (img.dataset.v !== view){ img.src = src; img.dataset.v = view; }
+      const jn = RIG.slot_joint[slot];
+      const J = RIG.joints.find(x=>x.name===jn);
+      let M = mul(W[jn], T(-J.pos[0], -J.pos[1]));
+      if (k > 0 && hi > lo){
+        const t = ((z[view][slot] ?? 0) - lo) / (hi - lo);
+        const off = t * 34 * k;
+        // .box 上套了 scaleX(-1)，内部的平移会跟着镜像；这里反一次，让 8 格都朝同一侧错开
+        M = mul(T((mir ? -1 : 1) * off * 0.72, -off * 0.72), M);
+      }
+      img.style.transform = `matrix(${M.map(n=>n.toFixed(5)).join(',')})`;
+      img.style.zIndex = (z[view][slot] ?? 0) + 100;
+      img.style.opacity = (dimOn && focus && focus!==slot) ? 0.12 : 1;
+    }
+  }
+}
+
+/** 改数值的统一入口：夹住非法输入 + 闪一下确认「这笔画被吃进去了」 */
+function setZ(v, s, raw, flashIt){
+  const n = parseInt(raw, 10);
+  z[v][s] = Number.isFinite(n) ? n : 0;
+  if (flashIt) flash(s);
+  refresh();
+}
+
+function flash(slot){
+  for (const b of boxes){
+    const img = b.imgs[slot];
+    if (!img) continue;
+    img.classList.remove('fl');
+    void img.offsetWidth;          // 强制重排，动画才会重播
+    img.classList.add('fl');
+  }
+}
+
+function refresh(keepFocusTable){
+  render();
+  const order = sortSlots();
+  // 行序随 z 变化重排 —— 但正在某个输入框里打字时别排，
+  // 否则刚敲完一行它就跳走，手指还在键盘上
+  const editing = document.activeElement && document.activeElement.tagName === 'INPUT';
+  const cur = [...tbody.children].map(tr=>tr.dataset.slot);
+  if (!editing && cur.join()!==order.join()){
+    const map = {};
+    for (const tr of [...tbody.children]) map[tr.dataset.slot]=tr;
+    for (const s of order) tbody.appendChild(map[s]);
+  }
+  for (const tr of tbody.children){
+    const s = tr.dataset.slot;
+    for (let vi=0; vi<VIEWS.length; vi++){
+      const inp = tr.children[vi+1].querySelector('input');
+      if (document.activeElement!==inp) inp.value = z[VIEWS[vi]][s] ?? 0;
+    }
+  }
+  // 同一层（z 相同）的行用一条细线跟下一层隔开 —— 相邻的层因此成块，
+  // 一眼能数出「这几块是同一层，再往前是一层」
+  let prev = null;
+  for (const tr of tbody.children){
+    const zz = z[sortView][tr.dataset.slot] ?? 0;
+    tr.classList.toggle('sep', prev !== null && zz !== prev);
+    tr.dataset.rank = zz;
+    prev = zz;
+  }
+  checkIssues();
+  renderSwing();
+}
+
+/* ---------- 不变量检查（和 tools/zdump.gd 同一套规则） ---------- */
+function checkIssues(){
+  const bad = [];
+  for (let d=0; d<8; d++){
+    const [vi] = RIG.dir_to_view[d];
+    const v = VIEWS[vi], near = NEAR[v], isBack = BACKD.includes(d);
+    const g = s => z[v][s];
+    const far = near==='l' ? 'r' : (near==='r' ? 'l' : null);
+    const body = g('body'), cape = g('cape');
+    if (!near){
+      if (g('arm_l') !== g('arm_r')) bad.push(`${DIRS[d]} 对称视图两臂不同层 ${g('arm_l')}/${g('arm_r')}`);
+      if (g('arm_l') <= body) bad.push(`${DIRS[d]} 手臂被躯干盖住`);
+      if (g('leg_l') !== g('leg_r')) bad.push(`${DIRS[d]} 对称视图两腿不同层`);
+    } else {
+      if (!(g('arm_'+near) > body)) bad.push(`${DIRS[d]} 近臂(${g('arm_'+near)}) 没压过躯干(${body})`);
+      if (isBack){
+        if (!(g('arm_'+far) > cape)) bad.push(`${DIRS[d]} 远臂(${g('arm_'+far)}) 沉在披风(${cape}) 后面 → 摆动时会被布吃掉`);
+        if (!(g('arm_'+near) >= g('arm_'+far))) bad.push(`${DIRS[d]} 背面远臂比近臂高`);
+      } else if (!(body > g('arm_'+far))) {
+        bad.push(`${DIRS[d]} 远臂(${g('arm_'+far)}) 跑到躯干(${body}) 前面`);
+      }
+      if (!(g('leg_'+near) > g('leg_'+far))) bad.push(`${DIRS[d]} 近腿没压过远腿`);
+    }
+    if (isBack){
+      if (!(cape > body)) bad.push(`${DIRS[d]} 背面披风没盖住身体`);
+      if (!(g('hair_back') > g('head'))) bad.push(`${DIRS[d]} 后发没盖住头`);
+      if (!(g('hair_front') < g('head'))) bad.push(`${DIRS[d]} 背面刘海糊在后脑`);
+      if (!(g('face') < g('head'))) bad.push(`${DIRS[d]} 背面还有五官`);
+    } else {
+      if (!(cape < body)) bad.push(`${DIRS[d]} 正面披风跑到身体前面`);
+    }
+    for (const s of ['l','r'])
+      if (g('shin_'+s) < g('leg_'+s)) bad.push(`${DIRS[d]} 小腿压在腿下(${s})`);
+  }
+  const el = document.getElementById('issues');
+  const uniq = [...new Set(bad)];
+  el.innerHTML = uniq.length
+    ? `<div class="bad">${uniq.length} 处不满足物理约束</div>` +
+      uniq.map(t=>`<div class="row">· ${t}</div>`).join('')
+    : `<div class="ok">✓ 8 个方向都满足约束（与 zdump.gd 同一套判据）</div>`;
+}
+
+/* ---------- 摆动规则 ---------- */
+function renderSwing(){
+  const el = document.getElementById('swing');
+  let h = `<div class="hd"><span>摆动触发的层级切换</span><span class="spacer" style="flex:1"></span>
+           <button id="addSwing" style="padding:2px 8px">加一条</button></div>`;
+  if (!swing.length){
+    h += `<div class="empty">空。用来表达「同一条手臂，摆到前面时该压在躯干上、摆回去时该沉到后面」。
+          静态矩阵做不到这件事，只能按关节角实时切。阈值要大于手臂脱离躯干轮廓的角度，否则会跳。</div>`;
+  } else {
+    for (let i=0;i<swing.length;i++){
+      const r = swing[i];
+      h += `<div class="rule">
+        <b>${r.slot}</b> @${r.joint}
+        ≥<input type="number" data-i="${i}" data-k="deg" value="${r.deg}" style="width:44px">
+        →前 <input type="number" data-i="${i}" data-k="front" value="${r.front}" style="width:44px">
+        /背 <input type="number" data-i="${i}" data-k="back" value="${r.back}" style="width:44px">
+        <button data-del="${i}" style="padding:1px 6px;margin-left:auto">删</button></div>`;
+    }
+  }
+  el.innerHTML = h;
+  const add = document.getElementById('addSwing');
+  if (add) add.onclick = ()=>{
+    const slot = focus && RIG.slot_joint[focus] && RIG.slot_joint[focus].startsWith('shoulder')
+      ? focus : 'arm_r';
+    swing.push({slot, joint: RIG.slot_joint[slot]||'shoulder_r', deg: 8, hysteresis: 4,
+                front: (z.s[slot]||13), back: (z.n[slot]||24)});
+    refresh();
+  };
+  el.querySelectorAll('input').forEach(inp=>{
+    inp.oninput = ()=>{ swing[+inp.dataset.i][inp.dataset.k] = parseFloat(inp.value||'0'); };
+  });
+  el.querySelectorAll('button[data-del]').forEach(b=>{
+    b.onclick = ()=>{ swing.splice(+b.dataset.del,1); refresh(); };
+  });
+}
+
+/* ---------- 导出 / 导入 ---------- */
+function currentDoc(){
+  return {version:1, generated_by:'tools/layer_designer.html',
+    note:'前后关系（z 序）的唯一可编辑副本。数字越大越靠近镜头。',
+    views:VIEWS, z, swing, _rig: RULES._rig};
+}
+const dlg = document.getElementById('dlg');
+document.getElementById('btnExport').onclick = ()=>{
+  document.getElementById('json').value = JSON.stringify(currentDoc(), null, 2);
+  dlg.showModal();
+};
+document.getElementById('dlgCopy').onclick = ()=>{
+  const ta = document.getElementById('json'); ta.select();
+  document.execCommand('copy');
+};
+document.getElementById('dlgClose').onclick = ()=>dlg.close();
+document.getElementById('btnReset').onclick = ()=>{
+  for (const v of VIEWS) Object.assign(z[v], original.z[v]);
+  swing.length = 0; (original.swing||[]).forEach(r=>swing.push(r));
+  refresh();
+};
+
+/* ---------- 载入外部文件 ----------
+   设计器里的 RULES 是**打包那一刻**的快照。改了 data/layer_rules.json 再双击
+   打开 html，看到的还是旧值 —— 必须把文件喂进来才生效。 */
+function applyDoc(d){
+  for (const v of VIEWS) if (d.z && d.z[v]) Object.assign(z[v], d.z[v]);
+  swing.length = 0; (d.swing||[]).forEach(r=>swing.push(r));
+  refresh();
+}
+
+const fileIn = document.getElementById('fileIn');
+document.getElementById('btnOpen').onclick = ()=>fileIn.click();
+fileIn.onchange = ()=>{ if (fileIn.files && fileIn.files[0]) loadFile(fileIn.files[0]); };
+function loadFile(f){
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      applyDoc(JSON.parse(r.result));
+      // 「还原」从此回到刚打开的那份，而不是回到打包快照
+      original.z = JSON.parse(JSON.stringify(z));
+      original.swing = JSON.parse(JSON.stringify(swing));
+      document.getElementById('hint').textContent = '已载入 ' + f.name;
+    }catch(e){ alert('解析失败：' + e.message); }
+  };
+  r.readAsText(f, 'utf-8');
+}
+// 直接把 json 拖进窗口也行
+window.addEventListener('dragover', e=>e.preventDefault());
+window.addEventListener('drop', e=>{
+  e.preventDefault();
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+
+document.getElementById('btnImport').onclick = ()=>{
+  const s = prompt('粘贴 layer_rules.json 的内容：');
+  if (!s) return;
+  try{ applyDoc(JSON.parse(s)); }
+  catch(e){ alert('解析失败：'+e.message); }
+};
+
+/* ---------- 播放 ---------- */
+let raf = 0, ph0 = 0, t0 = 0;
+document.getElementById('play').onchange = e=>{
+  if (e.target.checked){ t0 = performance.now(); ph0 = parseFloat(document.getElementById('phase').value); tick(); }
+  else cancelAnimationFrame(raf);
+};
+function tick(){
+  const dt = (performance.now()-t0)/1000;
+  document.getElementById('phase').value = (ph0 + dt/1.56) % 1;
+  render();
+  raf = requestAnimationFrame(tick);
+}
+document.getElementById('phase').oninput = render;
+document.getElementById('dim').onchange = render;
+document.getElementById('explode').oninput = render;
+
+buildTable();
+paintHead();
+refresh();
+</script>
+</body>
+</html>

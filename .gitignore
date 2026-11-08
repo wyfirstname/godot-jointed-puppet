@@ -1,0 +1,13 @@
+# Godot
+.godot/
+*.translation
+
+# 工作区杂物
+.playwright-cli/
+__pycache__/
+.pytest_cache/
+.tmpcheck*
+*.pyc
+
+# 临时产物
+docs/blog/blog_template.md.bak

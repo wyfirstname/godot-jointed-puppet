@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>角色设计器 · 关节人偶</title>
+<style>
+  :root{
+    --bg:#14161b; --bg2:#1b1e25; --bg3:#22262f; --line:#31363f;
+    --fg:#dfe3ea; --fg2:#98a0ae; --acc:#6aa8ff; --ok:#5fd39a; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+    font:13px/1.45 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;
+    overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100%}
+
+  header{display:flex;align-items:center;gap:12px;padding:9px 14px;
+    background:var(--bg2);border-bottom:1px solid var(--line);flex:0 0 auto}
+  header h1{font-size:13px;font-weight:600;margin:0;letter-spacing:.02em}
+  header .tag{color:var(--fg2);font-size:11px}
+  .spacer{flex:1}
+  button{background:var(--bg3);color:var(--fg);border:1px solid var(--line);
+    border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer}
+  button:hover{border-color:#4a5262;background:#2a2f3a}
+  button.primary{background:#27406b;border-color:#3a5d99}
+  button.primary:hover{background:#2f4d80}
+  input[type=text]{background:var(--bg);color:var(--fg);border:1px solid var(--line);
+    border-radius:5px;padding:4px 8px;font-size:12px;width:130px}
+  input[type=range]{accent-color:var(--acc);width:120px}
+  select{background:var(--bg);color:var(--fg);border:1px solid var(--line);
+    border-radius:5px;padding:4px 6px;font-size:12px}
+
+  main{display:flex;flex:1;min-height:0}
+  #stage{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+  #cvwrap{flex:1;position:relative;min-height:0}
+  #cv{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+  #ctrl{display:flex;flex-direction:column;gap:7px;padding:9px 14px 12px;
+    border-top:1px solid var(--line);background:var(--bg2)}
+  #ctrl .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  #ctrl .row>span.k{color:var(--fg2);font-size:12px;min-width:34px}
+  .dbtn{width:38px;padding:4px 0;text-align:center;font-size:11.5px;
+    font-variant-numeric:tabular-nums}
+  .dbtn.on{background:#27406b;border-color:#3a5d99;color:#fff}
+  label.chk{display:flex;align-items:center;gap:5px;color:var(--fg2);font-size:12px}
+
+  aside{width:404px;flex:0 0 auto;border-left:1px solid var(--line);
+    background:var(--bg2);display:flex;flex-direction:column;min-height:0}
+  aside .scroll{overflow:auto;flex:1;min-height:0}
+  .sec{border-bottom:1px solid var(--line);padding:10px 12px}
+  .sechd{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg2);
+    margin-bottom:8px;font-weight:500}
+  .sechd .hint{color:#6b7381;font-weight:400;font-size:11px}
+
+  /* 部件库：一个分类一排缩略图 —— 悬停先预览，点击穿到身上 */
+  .lsec{margin-bottom:13px}
+  .lhd{display:flex;align-items:baseline;gap:7px;margin-bottom:6px}
+  .lhd .ln{font-size:12px;color:var(--fg);font-weight:600}
+  .lhd .lc{font-size:10.5px;color:#6b7381}
+  .lgrid{display:flex;gap:6px;flex-wrap:wrap}
+  .lchip{background:var(--bg3);border:1px solid var(--line);border-radius:7px;
+    padding:3px 3px 2px;cursor:pointer;text-align:center;position:relative;
+    transition:border-color .1s,background .1s}
+  .lchip:hover{border-color:#5a657a;background:#262b36}
+  .lchip.on{border-color:var(--acc);background:#1d2839}
+  .lchip canvas{display:block;image-rendering:auto;margin:0 auto}
+  .lchip .vn{font-size:10px;color:var(--fg2);margin-top:1px;max-width:64px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lchip.on .vn{color:var(--fg)}
+  .lchip .none{width:44px;height:44px;line-height:44px;color:#6b7381;font-size:16px}
+
+  .crow{display:flex;align-items:center;gap:8px;margin:7px 0}
+  .crow .clab{width:34px;font-size:12px;color:var(--fg2);flex:0 0 auto}
+  .crow .sw{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+  .crow .dot{width:17px;height:17px;border-radius:4px;border:1px solid #3d4757;
+    cursor:pointer;padding:0}
+  .crow .dot.on{outline:2px solid var(--acc);outline-offset:1px}
+  .crow input[type=color]{width:24px;height:20px;padding:0;border:1px solid var(--line);
+    background:none;border-radius:4px;cursor:pointer}
+
+  .presetgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .pcard{background:var(--bg3);border:1px solid var(--line);border-radius:7px;
+    padding:6px 7px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .pcard:hover{border-color:#4a5262}
+  .pcard .chips{display:flex;gap:2px}
+  .pcard .chips i{width:8px;height:14px;border-radius:2px;display:block}
+  .pcard .pn{font-size:11px;color:var(--fg2)}
+  footer{padding:7px 12px;border-top:1px solid var(--line);color:#6b7381;
+    font-size:11px;flex:0 0 auto}
+
+  dialog{background:var(--bg2);color:var(--fg);border:1px solid var(--line);
+    border-radius:10px;padding:14px;width:540px;max-width:92vw}
+  dialog textarea{width:100%;height:300px;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:6px;
+    font:11.5px/1.45 ui-monospace,Consolas,monospace;padding:8px;resize:vertical}
+  .dlgrow{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>角色设计器</h1>
+    <span class="tag">选配台 · 悬停试穿 / 点击装配 / 实时染色，画布立刻变</span>
+    <span class="spacer"></span>
+    <input id="name" type="text" value="无名旅人" title="角色名">
+    <button id="btnRandom">随机角色</button>
+    <button id="btnReset">重置</button>
+    <button id="btnExport" class="primary">导出档案</button>
+  </header>
+
+  <main>
+    <section id="stage">
+      <div id="cvwrap"><canvas id="cv"></canvas></div>
+      <div id="ctrl">
+        <div class="row">
+          <span class="k">朝向</span>
+          <div class="row" id="dirs" style="gap:4px"></div>
+          <span class="spacer"></span>
+          <label class="chk">缩放 <input id="zoom" type="range" min="1.4" max="3.6" step="0.1" value="2.5"></label>
+        </div>
+        <div class="row">
+          <span class="k">动作</span>
+          <select id="motion">
+            <option value="idle">站立</option>
+            <option value="walk" selected>走路</option>
+          </select>
+          <label class="chk"><input id="play" type="checkbox" checked> 播放</label>
+          <label class="chk">相位 <input id="phase" type="range" min="0" max="1" step="0.005" value="0.12"></label>
+          <span class="spacer"></span>
+          <span id="stat" style="color:#6b7381;font-size:11.5px"></span>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="scroll">
+        <div class="sec">
+          <div class="sechd">部件选配 <span class="hint">悬停先预览 · 点击穿到身上</span></div>
+          <div id="library"></div>
+        </div>
+        <div class="sec">
+          <div class="sechd">配色 <span class="hint">整只人偶分区重染，实时</span></div>
+          <div id="colors"></div>
+        </div>
+        <div class="sec">
+          <div class="sechd">预设角色 <span class="hint">一套配色 = 一个角色</span></div>
+          <div id="presets" class="presetgrid"></div>
+        </div>
+      </div>
+      <footer>← → 切朝向 · E 切表情 · 画布所见即 <code>JointDoll</code> 运行时（同一套骨架 + z 表）</footer>
+    </aside>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <div style="margin-bottom:8px;color:#98a0ae">角色档案（可直接喂给 <code>CharacterVisual.from_dict</code>）</div>
+  <textarea id="json"></textarea>
+  <div class="dlgrow">
+    <button id="dlgCopy">复制</button>
+    <button id="dlgClose">关闭</button>
+  </div>
+</dialog>
+
+<script>
+const D = /*__DATA__*/{};
+const RIG = D.rig, Z = D.z, ASSETS = D.assets, MASKS = D.masks, BASE = D.base;
+const GROUPS = D.groups, ELBOW_REST = D.elbow_rest;
+const VIEWS = RIG.views;                    // ["s","sw","w","nw","n"]
+const DIRS  = ["S","SW","W","NW","N","NE","E","SE"];
+
+/* 槽位中文名 —— 只有显示用，代码里永远是英文键 */
+const LABEL = {body:"躯干", head:"头", face:"表情", hair_front:"刘海", hair_back:"后发",
+  cape:"披风", arm_l:"左上臂", arm_r:"右上臂", fore_l:"左小臂", fore_r:"右小臂",
+  leg_l:"左大腿", leg_r:"右大腿", shin_l:"左小腿", shin_r:"右小腿", weapon:"武器"};
+/* 部件选配台按「服装→表情→发型→帽子→披风→武器」组织，见 buildLibrary() */
+const EXPR_LABEL = {neutral:"平静", smile:"微笑", angry:"生气", sad:"悲伤",
+  surprise:"惊讶", blink:"闭眼"};
+
+/* ---------- 2D 仿射：和 Godot 的 Node2D 变换一一对应 ---------- */
+const I = [1,0,0,1,0,0];
+const T = (x,y)=>[1,0,0,1,x,y];
+const S = k=>[k,0,0,k,0,0];
+const R = t=>[Math.cos(t),Math.sin(t),-Math.sin(t),Math.cos(t),0,0];
+const MIRROR = [-1,0,0,1,256,0];      // 模型空间里 x -> 256-x，绕画布中线翻
+function mul(A,B){return [
+  A[0]*B[0]+A[2]*B[1], A[1]*B[0]+A[3]*B[1],
+  A[0]*B[2]+A[2]*B[3], A[1]*B[2]+A[3]*B[3],
+  A[0]*B[4]+A[2]*B[5]+A[4], A[1]*B[4]+A[3]*B[5]+A[5]];}
+const rad = d=>d*Math.PI/180;
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+
+/* ---------- 颜色：和 part_tint.gdshader 同一套 HSV 运算 ---------- */
+function rgb2hsv(r,g,b){
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0;
+  if (d>1e-6){
+    if (mx===r) h=((g-b)/d)%6;
+    else if (mx===g) h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h/=6; if (h<0) h+=1;
+  }
+  return [h, mx>1e-6?d/mx:0, mx];
+}
+function hsv2rgb(h,s,v){
+  h=((h%1)+1)%1;
+  const f=n=>{const k=(n+h*6)%6; return v-v*s*Math.max(0,Math.min(k,4-k,1));};
+  return [f(5), f(3), f(1)];
+}
+function hexToHsv(hex){
+  const n=parseInt(hex.slice(1),16);
+  return rgb2hsv(((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255);
+}
+function hsvApply(hsv, p){
+  return hsv2rgb(hsv[0]+p.h, clamp(hsv[1]*p.s,0,1), clamp(hsv[2]*p.v,0,1));
+}
+
+/* ---------- 状态 ---------- */
+const state = {
+  dir: 0,
+  motion: "walk",
+  phase: 0.12,
+  zoom: 2.5,
+  variants: {},                       // slot -> 变体名 | null(=不戴)
+  previewParts: null,                 // 悬停试穿：{slot: 变体|null}，画布上盖在 variants 上
+  color: {wood:null, cloth:null, hair:null, skin:null, metal:null},
+};
+
+const SLOTS = (RIG.slots||[]).filter(s=>ASSETS[s]);       // 只保留真有图的槽位
+// 默认穿在身上的槽位（与 CharacterVisual.DEFAULT_SLOTS 一致）。
+// 之外的槽位（hat / clothes / 鞋 / 手套……）默认**不戴**——
+// 不能拿「字典第一个变体」当默认：hat 只有 hood/wizard 两个变体，
+// 拿第一个的话开局所有角色都顶着兜帽
+const BASE_WORN = ["cape","hair_back","leg_r","shin_r","leg_l","shin_l",
+                   "arm_r","fore_r","body","arm_l","fore_l","head","face",
+                   "hair_front","weapon"];
+// 默认变体不能拿「字典第一个」：face 按字母序排的话开局就是一脸怒气
+const PREFERRED = {face:"neutral"};
+function defName(slot){
+  const names = Object.keys(ASSETS[slot]||{});
+  if (names.includes(PREFERRED[slot])) return PREFERRED[slot];
+  // "default" 也要显式优先：键按字母序排的话 leather 会排在 default 前面
+  if (names.includes("default")) return "default";
+  return names[0];
+}
+for (const s of SLOTS)
+  state.variants[s] = BASE_WORN.includes(s) ? defName(s) : null;
+const faceVariants = Object.keys(ASSETS.face||{});
+
+/* ---------- 关节 / 姿态 ---------- */
+function jointOf(n){ return RIG.joints.find(j=>j.name===n) || {pos:[128,128]}; }
+
+/** 姿态 -> 各关节的局部旋转 / 位移。公式与 JointDoll._pose_walk 一致 */
+function poseOf(view, ph, motion){
+  const rot={}, off={};
+  if (motion === "idle") return {rot, off, bob:0};
+  const w = ph*Math.PI*2, p = RIG.profile[view];
+  let sway = 0;
+  if (p.mode === 0){
+    rot.hip_l = rad(p.leg*Math.sin(w));
+    rot.hip_r = rad(p.leg*Math.sin(w+Math.PI));
+    rot.knee_l = rad(-p.knee*Math.max(0,-Math.sin(w+0.55)));
+    rot.knee_r = rad(-p.knee*Math.max(0,-Math.sin(w+Math.PI+0.55)));
+    sway = 1.6;
+  } else {
+    off.hip_l = -(p.lift||0)*Math.max(0,Math.sin(w));
+    off.hip_r = -(p.lift||0)*Math.max(0,Math.sin(w+Math.PI));
+  }
+  rot.shoulder_l = rad(p.arm*Math.sin(w+Math.PI));
+  rot.shoulder_r = rad(p.arm*Math.sin(w));
+  if (p.mode === 0){
+    rot.elbow_l = rad( ELBOW_REST + p.arm*0.5*(0.5-0.5*Math.sin(w)));
+    rot.elbow_r = rad( ELBOW_REST + p.arm*0.5*(0.5+0.5*Math.sin(w)));
+  } else {
+    rot.elbow_l = rad(-p.arm*0.45*(0.5-0.5*Math.sin(w)));
+    rot.elbow_r = rad( p.arm*0.45*(0.5+0.5*Math.sin(w)));
+  }
+  rot.chest = rad(-sway*Math.sin(w));
+  rot.head  = rad( sway*Math.sin(w));
+  return {rot, off, bob: p.bob*Math.sin(2*w+Math.PI*0.5)};
+}
+
+function jointMatrices(p){
+  const J = RIG.joints, W = {};
+  for (const j of J){
+    const g = j.pos;
+    let local = j.parent ? T(g[0]-jointOf(j.parent).pos[0], g[1]-jointOf(j.parent).pos[1])
+                         : T(g[0], g[1]);
+    if (j.name === "hip") local = T(g[0], g[1] + p.bob);
+    const o = p.off[j.name];
+    if (o) local = mul(local, T(0,o));
+    W[j.name] = j.parent ? mul(mul(W[j.parent], local), R(p.rot[j.name]||0))
+                         : mul(local, R(p.rot[j.name]||0));
+  }
+  return W;
+}
+
+/* ---------- 染色缓存 ----------
+   一张 256×256 的层重算一遍是 65k 像素；20 层全染 ~1.3M 次运算。
+   只在配色变化时清缓存，姿势/朝向变化完全不碰它。 */
+const IMG = {}, MIMG = {};
+for (const slot in ASSETS)
+  for (const v in ASSETS[slot]){
+    IMG[slot] = IMG[slot]||{};  MIMG[slot] = MIMG[slot]||{};
+    IMG[slot][v] = {};          MIMG[slot][v] = {};
+    for (const view in ASSETS[slot][v]){
+      const im = new Image(); im.src = ASSETS[slot][v][view]; IMG[slot][v][view] = im;
+      const mk = (MASKS[slot]||{})[v] && MASKS[slot][v][view];
+      if (mk){ const mi = new Image(); mi.src = mk; MIMG[slot][v][view] = mi; }
+    }
+  }
+
+let tintSig = "", tcache = new Map();
+
+/** 组 -> 该槽位用的主色参数；没选颜色就是恒等。
+ *  服装变体优先查「槽位:变体」细键（袍子/皮甲跟 cloth 走，不跟木头走），
+ *  查不到再退回整个槽位的键。 */
+function groupOf(slot, variant){
+  const vk = slot+":"+(variant||"default");
+  for (const g in GROUPS) if (GROUPS[g].includes(vk)) return g;
+  for (const g in GROUPS) if (GROUPS[g].includes(slot)) return g;
+  return null;
+}
+/** 目标色换算成 shader 的 hue_shift/sat_mul/val_mul（相对这个槽位自己的基色） */
+function shiftFor(slot, variant, ch, hex){
+  const key = (variant && variant!=="default") ? slot+"_"+variant : slot;
+  const b = (BASE[key]||{})[ch];
+  if (!hex || !b) return {h:0,s:1,v:1};
+  const t = hexToHsv(hex);
+  let dh = t[0]-b[0];
+  dh -= Math.round(dh);                              // 折到 [-0.5,0.5]，否则色相绕远路
+  return {h:dh, s: b[1]>0.06 ? clamp(t[1]/b[1],0,2) : 1,
+          v: b[2]>0.06 ? clamp(t[2]/b[2],0,2) : 1};
+}
+function paramsFor(slot, variant){
+  const g = groupOf(slot, variant);
+  return {
+    main:  shiftFor(slot, variant, "r", g ? state.color[g] : null),
+    metal: shiftFor(slot, variant, "b", state.color.metal),
+    skin:  shiftFor(slot, variant, "g", state.color.skin),
+  };
+}
+
+function tintedLayer(slot, variant, view){
+  const key = slot+"|"+variant+"|"+view+"|"+tintSig;
+  if (tcache.has(key)) return tcache.get(key);
+  const img = (IMG[slot]||{})[variant] && IMG[slot][variant][view];
+  const mask = (MIMG[slot]||{})[variant] && MIMG[slot][variant][view];
+  const cnv = document.createElement("canvas");
+  cnv.width = cnv.height = 256;
+  const c2 = cnv.getContext("2d", {willReadFrequently:true});
+  if (!img || !img.complete) return null;
+  c2.drawImage(img, 0, 0);
+  if (!mask || !mask.complete){ tcache.set(key,cnv); return cnv; }
+
+  const p = paramsFor(slot, variant);
+  const src = c2.getImageData(0,0,256,256);
+  const tint = document.createElement("canvas");
+  tint.width = tint.height = 256;
+  const t2 = tint.getContext("2d", {willReadFrequently:true});
+  t2.drawImage(mask, 0, 0);
+  const md = t2.getImageData(0,0,256,256).data;
+  const px = src.data;
+  const identity = p.main.h===0 && p.main.s===1 && p.main.v===1
+                && p.metal.h===0 && p.metal.s===1 && p.metal.v===1
+                && p.skin.h===0 && p.skin.s===1 && p.skin.v===1;
+  if (identity){ tcache.set(key,cnv); return cnv; }
+
+  for (let i=0; i<px.length; i+=4){
+    if (px[i+3] === 0) continue;
+    const mr = md[i]/255, mg = md[i+1]/255, mb = md[i+2]/255;
+    if (mr <= 0.002 && mg <= 0.002 && mb <= 0.002) continue;   // 遮罩外保持原样
+    const hsv = rgb2hsv(px[i]/255, px[i+1]/255, px[i+2]/255);
+    let c = hsvApply(hsv, p.main);
+    if (mb > 0.002){ const m = hsvApply(hsv, p.metal);
+      c = [c[0]+(m[0]-c[0])*mb, c[1]+(m[1]-c[1])*mb, c[2]+(m[2]-c[2])*mb]; }
+    if (mg > 0.002){ const s = hsvApply(hsv, p.skin);
+      c = [c[0]+(s[0]-c[0])*mg, c[1]+(s[1]-c[1])*mg, c[2]+(s[2]-c[2])*mg]; }
+    px[i]   = (px[i]  +(c[0]*255-px[i]  )*mr);
+    px[i+1] = (px[i+1]+(c[1]*255-px[i+1])*mr);
+    px[i+2] = (px[i+2]+(c[2]*255-px[i+2])*mr);
+  }
+  c2.putImageData(src,0,0);
+  tcache.set(key,cnv);
+  return cnv;
+}
+
+/* ---------- 画布 ---------- */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let dpr = window.devicePixelRatio || 1;
+
+function fit(){
+  const r = cv.parentElement.getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width*dpr));
+  cv.height = Math.max(1, Math.round(r.height*dpr));
+  render();
+}
+new ResizeObserver(fit).observe(document.getElementById("cvwrap"));
+
+function slotsByZ(view){
+  return SLOTS.slice().sort((a,b)=>{
+    const za = (Z[view]||{})[a] ?? 0, zb = (Z[view]||{})[b] ?? 0;
+    if (za !== zb) return za - zb;                    // 小的先画（在后面）
+    return SLOTS.indexOf(a) - SLOTS.indexOf(b);
+  });
+}
+
+/** 当前生效的装配 = 已保存的装配 + 悬停试穿覆盖 */
+function effVariants(){
+  return Object.assign({}, state.variants, state.previewParts || {});
+}
+
+/** 把一整套装配画到任意画布上 —— 主画布和部件卡的迷你人偶共用这一份，
+ *  所以卡片上的小人和大画布是同一套骨架、同一张 z 表、同一个染色管线。 */
+function drawDoll(g, W, H, parts, view, mir, pose, zoom){
+  g.setTransform(1,0,0,1,0,0);
+  g.clearRect(0,0,W,H);
+  const k = zoom;
+  // 脚底对齐：模型里 y=216 是地面线
+  const base = mul(T(W/2 - 128*k, H*0.94 - 216*k), mul(S(k), mir ? MIRROR : I));
+
+  // 地面投影：加一点压感，不然人像浮在空中
+  // setTransform 必须展开成 6 个数：传数组会按 identity 处理，
+  // 阴影就画到画布左上角的设备坐标去了（第一版踩过）
+  g.setTransform(base[0],base[1],base[2],base[3],base[4],base[5]);
+  const gr = g.createRadialGradient(128, 214, 2, 128, 214, 46);
+  gr.addColorStop(0, "rgba(0,0,0,.30)");
+  gr.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = gr;
+  g.beginPath(); g.ellipse(128, 214, 46, 11, 0, 0, Math.PI*2); g.fill();
+
+  const Wm = jointMatrices(pose);
+  for (const slot of slotsByZ(view)){
+    const v = parts[slot];
+    if (!v) continue;
+    const cnv = tintedLayer(slot, v, view);
+    if (!cnv) continue;
+    const jn = RIG.slot_joint[slot], J = jointOf(jn);
+    const M = mul(Wm[jn] || I, T(-J.pos[0], -J.pos[1]));
+    const F = mul(base, M);
+    g.setTransform(F[0],F[1],F[2],F[3],F[4],F[5]);
+    g.drawImage(cnv, 0, 0);
+  }
+  g.setTransform(1,0,0,1,0,0);
+}
+
+function render(){
+  const [vi, mir] = RIG.dir_to_view[state.dir];
+  const view = VIEWS[vi];
+  drawDoll(ctx, cv.width, cv.height, effVariants(), view, mir,
+           poseOf(view, state.phase, state.motion), state.zoom * dpr);
+  document.getElementById("stat").textContent =
+    `${DIRS[state.dir]} · ${view}${mir?" 镜像":""} · ${slotsByZ(view).length} 层`
+    + (state.previewParts ? "  ·  试穿预览中，点击保留" : "");
+}
+
+/* ---------- 缩略图：裁到内容包围盒，别让 256 空白占满 ---------- */
+const thumbCache = new Map();
+function copyCanvas(src){
+  const c = document.createElement("canvas");
+  c.width = src.width; c.height = src.height;
+  c.getContext("2d").drawImage(src, 0, 0);
+  return c;
+}
+function thumb(slot, variant, size){
+  const key = slot+"|"+variant+"|"+size+"|"+tintSig;
+  const hit = thumbCache.get(key);
+  // 缓存里存的是「母本」，取的时候必须重新拷贝像素 ——
+  // canvas 的 cloneNode(true) 只克隆节点不克隆像素，出来是一整排黑卡
+  if (hit) return copyCanvas(hit);
+  const layer = tintedLayer(slot, variant, "s");
+  const out = document.createElement("canvas");
+  out.width = out.height = size;
+  if (!layer){ thumbCache.set(key,out); return out; }
+  const c2 = layer.getContext("2d");
+  const d = c2.getImageData(0,0,256,256).data;
+  let x0=256,y0=256,x1=-1,y1=-1;
+  for (let y=0; y<256; y++) for (let x=0; x<256; x++)
+    if (d[(y*256+x)*4+3] > 8){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+  if (x1 < 0){ thumbCache.set(key,out); return out; }
+  const w = x1-x0+1, h = y1-y0+1, s = Math.min(size/w, size/h);
+  const o = out.getContext("2d");
+  o.imageSmoothingQuality = "high";
+  o.drawImage(layer, x0, y0, w, h, (size-w*s)/2, (size-h*s)/2, w*s, h*s);
+  thumbCache.set(key, out);
+  return copyCanvas(out);
+}
+
+/* ---------- 部件选配台：视频里那种「点谁穿谁」 ----------
+   悬停 = 画布上先试穿；点击 = 正式换上。每个分类一排缩略图。
+   服装按「整套」换（躯干+四肢+靴子一起），单换一块躯干会出
+   袍子配木胳膊的怪组合 —— 这是视频里换装的核心规则。 */
+const library = document.getElementById("library");
+
+const OUTFIT_SLOTS = ["body","arm_l","arm_r","fore_l","fore_r","shin_l","shin_r"];
+const OUTFIT_DEFS = [
+  {n:"木偶", parts:{body:"default", arm_l:"default", arm_r:"default",
+                    fore_l:"default", fore_r:"default", shin_l:"default", shin_r:"default"}},
+  {n:"长袍", parts:{body:"robe", arm_l:"robe", arm_r:"robe",
+                    fore_l:"robe", fore_r:"robe", shin_l:"default", shin_r:"default"}},
+  {n:"皮甲", parts:{body:"leather", arm_l:"leather", arm_r:"leather",
+                    fore_l:"leather", fore_r:"leather", shin_l:"boot", shin_r:"boot"}},
+];
+// 素材里缺哪块就丢掉整套，新服装进来只要图齐了自动出现
+const OUTFITS = OUTFIT_DEFS.filter(o =>
+  Object.entries(o.parts).every(([s,v]) => ((ASSETS[s]||{})[v])));
+
+function defaultsAll(){
+  const o = {};
+  for (const s of SLOTS) o[s] = BASE_WORN.includes(s) ? defName(s) : null;
+  return o;
+}
+
+function chipEl(label){
+  const el = document.createElement("div");
+  el.className = "lchip";
+  const nm = document.createElement("div");
+  nm.className = "vn"; nm.textContent = label;
+  return {el, nm};
+}
+function sectionEl(title, count){
+  const sec = document.createElement("div"); sec.className = "lsec";
+  sec.innerHTML = `<div class="lhd"><span class="ln">${title}</span>
+                   <span class="lc">${count} 项</span></div>`;
+  const grid = document.createElement("div"); grid.className = "lgrid";
+  sec.appendChild(grid);
+  return {sec, grid};
+}
+function bindPreview(el, parts, onPick){
+  el.onmouseenter = ()=>{ state.previewParts = parts; render(); };
+  el.onmouseleave = ()=>{ state.previewParts = null; render(); };
+  el.onclick = ()=>{ state.previewParts = null; onPick(); buildLibrary(); render(); };
+}
+
+/** 单槽位分类（表情/帽子/披风/武器…）。takeable=false 的没有「不戴」 */
+function addSlotSection(title, slot, labels, takeable=true){
+  const names = Object.keys(ASSETS[slot]||{});
+  if (!names.length) return;
+  const name = v => (labels && labels[v]) || (v==="default" ? "默认" : v);
+  const {sec, grid} = sectionEl(title, names.length + (takeable?1:0));
+  if (takeable){
+    const {el, nm} = chipEl("不戴");
+    el.innerHTML = `<div class="none">—</div>`; el.appendChild(nm);
+    bindPreview(el, {[slot]: null}, ()=>{ state.variants[slot] = null; });
+    if (state.variants[slot] == null) el.classList.add("on");
+    grid.appendChild(el);
+  }
+  for (const v of names){
+    const {el, nm} = chipEl(name(v));
+    el.appendChild(thumb(slot, v, 44)); el.appendChild(nm);
+    bindPreview(el, {[slot]: v}, ()=>{ state.variants[slot] = v; });
+    if (state.variants[slot] === v) el.classList.add("on");
+    grid.appendChild(el);
+  }
+  library.appendChild(sec);
+}
+
+/** 服装分类：卡片是一只会穿当前配色的迷你人偶，一眼看到这套衣服上身什么样 */
+function addOutfitSection(){
+  if (!OUTFITS.length) return;
+  const {sec, grid} = sectionEl("服装", OUTFITS.length);
+  for (const o of OUTFITS){
+    const {el, nm} = chipEl(o.n);
+    const mini = document.createElement("canvas");
+    mini.width = 62; mini.height = 68;
+    drawDoll(mini.getContext("2d"), 62, 68,
+             Object.assign(defaultsAll(), o.parts),
+             "s", false, poseOf("s", 0, "idle"), 62/250);
+    el.appendChild(mini); el.appendChild(nm);
+    bindPreview(el, o.parts, ()=>{
+      for (const s of OUTFIT_SLOTS) state.variants[s] = o.parts[s] ?? null;
+    });
+    if (OUTFIT_SLOTS.every(s => (state.variants[s]||null) === (o.parts[s]||null)))
+      el.classList.add("on");
+    grid.appendChild(el);
+  }
+  library.appendChild(sec);
+}
+
+/** 发型：前发/后发按同名配对一起换；后发缺这个变体就保持后发的默认 */
+function addHairSection(){
+  const names = Object.keys(ASSETS.hair_front||{});
+  if (!names.length) return;
+  const {sec, grid} = sectionEl("发型", names.length);
+  for (const v of names){
+    const {el, nm} = chipEl(v==="default" ? "短发" : v);
+    el.appendChild(thumb("hair_front", v, 44)); el.appendChild(nm);
+    const bk = ((ASSETS.hair_back||{})[v]) ? v : "default";
+    const parts = {hair_front: v,
+                   hair_back: (ASSETS.hair_back||{})[bk] ? bk : (state.variants.hair_back||null)};
+    bindPreview(el, parts, ()=>{
+      state.variants.hair_front = v;
+      if (parts.hair_back != null) state.variants.hair_back = parts.hair_back;
+    });
+    if (state.variants.hair_front === v) el.classList.add("on");
+    grid.appendChild(el);
+  }
+  library.appendChild(sec);
+}
+
+function buildLibrary(){
+  library.innerHTML = "";
+  addOutfitSection();
+  addSlotSection("表情", "face", EXPR_LABEL, false);
+  addHairSection();
+  addSlotSection("帽子", "hat", {hood:"兜帽", wizard:"尖帽"});
+  addSlotSection("披风", "cape");
+  addSlotSection("武器", "weapon");
+}
+
+/* ---------- 配色面板 ---------- */
+const PALETTE = {
+  wood:  ["#b98a52","#e0b078","#8a5a33","#6b6f7a","#d9cbb8","#4a4e58"],
+  cloth: ["#b33a3a","#2f6fb8","#2f8f6a","#7a4b9c","#d08a2a","#2b2f3a"],
+  hair:  ["#60402a","#2a2a30","#d9c07a","#b85a3a","#8a8f9a","#4a6fa8"],
+  skin:  ["#f2d3b3","#e8c39a","#c99a6a","#a8c8b8","#d8b8d0","#f0e0c0"],
+  metal: ["#d8a53a","#c0c6d0","#b87333","#6a7280","#e8e0b0","#8a5a24"],
+};
+const CLABEL = {wood:"木头", cloth:"布料", hair:"头发", skin:"皮肤", metal:"金属"};
+
+function buildColors(){
+  const box = document.getElementById("colors");
+  box.innerHTML = "";
+  for (const g of ["wood","cloth","hair","skin","metal"]){
+    const row = document.createElement("div");
+    row.className = "crow";
+    row.innerHTML = `<span class="clab">${CLABEL[g]}</span>`;
+    const sw = document.createElement("div");
+    sw.className = "sw";
+    // 第一颗是「原色」：不染，回到美术本来的颜色
+    const orig = document.createElement("button");
+    orig.className = "dot" + (state.color[g]===null ? " on" : "");
+    orig.style.background = "#3a3f4a";
+    orig.title = "原色（不染）";
+    orig.onclick = ()=>{ state.color[g] = null; onColorChange(); };
+    sw.appendChild(orig);
+    for (const hex of PALETTE[g]){
+      const b = document.createElement("button");
+      b.className = "dot" + (state.color[g]===hex ? " on" : "");
+      b.style.background = hex;
+      b.onclick = ()=>{ state.color[g] = hex; onColorChange(); };
+      sw.appendChild(b);
+    }
+    row.appendChild(sw);
+    const pick = document.createElement("input");
+    pick.type = "color";
+    pick.value = state.color[g] || "#b98a52";
+    pick.title = "自选颜色";
+    pick.oninput = ()=>{ state.color[g] = pick.value; onColorChange(); };
+    row.appendChild(pick);
+    box.appendChild(row);
+  }
+}
+
+function onColorChange(){
+  tintSig = JSON.stringify(state.color);
+  tcache.clear(); thumbCache.clear();
+  buildColors(); buildLibrary();
+  render();
+}
+
+/* ---------- 预设角色 ---------- */
+/* p.parts：槽位 -> 变体名；null = 摘掉。没提到的槽位保持默认装配。
+   法师/游侠两套是有造型的：袍子盖关节、皮甲露关节，颜色只是最后一步。 */
+const OUTFIT_ROBE  = {body:"robe", arm_l:"robe", arm_r:"robe", fore_l:"robe",
+                      fore_r:"robe", hat:"wizard", cape:null, hair_front:null};
+const OUTFIT_RANGER= {body:"leather", arm_l:"leather", arm_r:"leather",
+                      fore_l:"leather", fore_r:"leather",
+                      shin_l:"boot", shin_r:"boot", hat:"hood", cape:null};
+
+const PRESETS = [
+  {n:"王国骑士", wood:null,  cloth:"#b33a3a", hair:"#60402a", skin:null,      metal:"#d8a53a", e:"neutral"},
+  {n:"森林游侠", wood:"#8a5a33", cloth:"#2f8f6a", hair:"#2a2a30", skin:"#e8c39a", metal:"#6a7280", e:"neutral", parts:OUTFIT_RANGER},
+  {n:"霜语法师", wood:"#d9cbb8", cloth:"#2f6fb8", hair:"#8a8f9a", skin:"#f0e0c0", metal:"#c0c6d0", e:"neutral", parts:OUTFIT_ROBE},
+  {n:"赤炎武者", wood:"#8a5a33", cloth:"#d08a2a", hair:"#b85a3a", skin:"#c99a6a", metal:"#b87333", e:"angry",
+   parts:{body:"leather", arm_l:"leather", arm_r:"leather", fore_l:"leather", fore_r:"leather", shin_l:"boot", shin_r:"boot"}},
+  {n:"暗影刺客", wood:"#4a4e58", cloth:"#2b2f3a", hair:"#2a2a30", skin:"#c99a6a", metal:"#6a7280", e:"sad",
+   parts:Object.assign({}, OUTFIT_RANGER, {cape:"default"})},
+  {n:"圣殿祭司", wood:"#e0b078", cloth:"#d9cbb8", hair:"#d9c07a", skin:"#f2d3b3", metal:"#e8e0b0", e:"smile",
+   parts:Object.assign({}, OUTFIT_ROBE, {hat:"hood", e:"smile"})},
+  {n:"紫晶术士", wood:"#6b6f7a", cloth:"#7a4b9c", hair:"#4a6fa8", skin:"#d8b8d0", metal:"#c0c6d0", e:"surprise", parts:OUTFIT_ROBE},
+  {n:"荒野旅人", wood:"#b98a52", cloth:"#8a6b3a", hair:"#60402a", skin:"#e8c39a", metal:"#b87333", e:"neutral"},
+  {n:"碧海游侠", wood:"#b98a52", cloth:"#2f6fb8", hair:"#4a6fa8", skin:"#f2d3b3", metal:"#c0c6d0", e:"smile"},
+  {n:"苔原守望", wood:"#d9cbb8", cloth:"#2f8f6a", hair:"#d9c07a", skin:"#f0e0c0", metal:"#6a7280", e:"blink",
+   parts:Object.assign({}, OUTFIT_ROBE, {hat:"hood"})},
+  {n:"灰烬骑士", wood:"#6b6f7a", cloth:"#2b2f3a", hair:"#2a2a30", skin:"#c99a6a", metal:"#b87333", e:"angry"},
+  {n:"晨光少年", wood:"#e0b078", cloth:"#2f6fb8", hair:"#d9c07a", skin:"#f2d3b3", metal:"#d8a53a", e:"smile"},
+];
+
+function buildPresets(){
+  const box = document.getElementById("presets");
+  box.innerHTML = "";
+  for (const p of PRESETS){
+    const card = document.createElement("div");
+    card.className = "pcard";
+    card.title = p.n;
+    const chips = document.createElement("div");
+    chips.className = "chips";
+    for (const k of ["wood","cloth","hair","metal"]){
+      const i = document.createElement("i");
+      i.style.background = p[k] || (k==="wood" ? "#b98a52" : k==="cloth" ? "#b33a3a"
+                    : k==="hair" ? "#60402a" : "#d8a53a");
+      chips.appendChild(i);
+    }
+    card.appendChild(chips);
+    const nm = document.createElement("div");
+    nm.className = "pn"; nm.textContent = p.n;
+    card.appendChild(nm);
+    card.onclick = ()=>{
+      state.color = {wood:p.wood, cloth:p.cloth, hair:p.hair, skin:p.skin, metal:p.metal};
+      // 先回到默认装配，再叠预设的服装槽位 —— 预设之间互不残留
+      for (const s of SLOTS) state.variants[s] = BASE_WORN.includes(s) ? defName(s) : null;
+      if (p.parts) for (const s in p.parts) state.variants[s] = p.parts[s];
+      if (p.e && ASSETS.face[p.e]){ state.variants.face = p.e; }
+      document.getElementById("name").value = p.n;
+      tintSig = JSON.stringify(state.color);
+      tcache.clear(); thumbCache.clear();
+      buildColors(); buildLibrary();
+      render();
+    };
+    box.appendChild(card);
+  }
+}
+
+/* ---------- 随机 / 重置 / 导出 ---------- */
+document.getElementById("btnRandom").onclick = ()=>{
+  const pick = a=>a[Math.floor(Math.random()*a.length)];
+  state.color = {wood:pick(PALETTE.wood), cloth:pick(PALETTE.cloth),
+                 hair:pick(PALETTE.hair), skin:pick(PALETTE.skin), metal:pick(PALETTE.metal)};
+  state.variants.face = pick(faceVariants);
+  // 服装要成套随机：先抽一个「风格」，再把躯干/四肢/靴子统一过去。
+  // 逐槽位独立随机的话，袍子配木胳膊、半截皮甲配长袍，丑组合率太高
+  const style = pick(["default","default","robe","leather"]);
+  for (const s of ["body","arm_l","arm_r","fore_l","fore_r","shin_l","shin_r"]){
+    if (!ASSETS[s]) continue;
+    const want = (s.startsWith("shin") && style==="robe") ? "default" : style;
+    state.variants[s] = Object.keys(ASSETS[s]).includes(want) ? want : defName(s);
+  }
+  state.variants.hat   = (ASSETS.hat && Math.random()<0.45) ? pick(Object.keys(ASSETS.hat)) : null;
+  state.variants.cape  = Math.random()<0.6 ? "default" : null;
+  state.dir = Math.floor(Math.random()*8);
+  document.getElementById("name").value = "角色 #" + (100+Math.floor(Math.random()*900));
+  tintSig = JSON.stringify(state.color);
+  tcache.clear(); thumbCache.clear();
+  buildColors(); buildLibrary(); buildDirs();
+  render();
+};
+document.getElementById("btnReset").onclick = ()=>{
+  state.color = {wood:null, cloth:null, hair:null, skin:null, metal:null};
+  for (const s of SLOTS) state.variants[s] = BASE_WORN.includes(s) ? defName(s) : null;
+  state.dir = 0;
+  tintSig = ""; tcache.clear(); thumbCache.clear();
+  buildColors(); buildLibrary(); buildDirs(); render();
+};
+
+const dlg = document.getElementById("dlg");
+document.getElementById("btnExport").onclick = ()=>{
+  const doc = {
+    name: document.getElementById("name").value,
+    generated_by: "tools/character_designer.html",
+    note: "parts = 槽位->变体名；colors = 分区染色的目标色（null 表示用美术原色）",
+    parts: Object.fromEntries(Object.entries(state.variants).filter(([k,v])=>v)),
+    colors: state.color,
+    direction: state.dir,
+  };
+  document.getElementById("json").value = JSON.stringify(doc, null, 2);
+  dlg.showModal();
+};
+document.getElementById("dlgClose").onclick = ()=>dlg.close();
+document.getElementById("dlgCopy").onclick = ()=>{
+  const ta = document.getElementById("json"); ta.select(); document.execCommand("copy");
+};
+
+/* ---------- 方向 / 动作 ---------- */
+function buildDirs(){
+  const box = document.getElementById("dirs");
+  box.innerHTML = "";
+  for (let d=0; d<8; d++){
+    const b = document.createElement("button");
+    b.className = "dbtn" + (d===state.dir ? " on" : "");
+    b.textContent = DIRS[d];
+    b.onclick = ()=>{ state.dir = d; buildDirs(); render(); };
+    box.appendChild(b);
+  }
+}
+document.getElementById("motion").onchange = e=>{ state.motion = e.target.value; render(); };
+document.getElementById("zoom").oninput = e=>{ state.zoom = parseFloat(e.target.value); render(); };
+document.getElementById("phase").oninput = e=>{
+  state.phase = parseFloat(e.target.value);
+  document.getElementById("play").checked = false;
+  render();
+};
+
+/* 播放：1.56s 一个完整步态周期，和 demo 的节奏一致 */
+let raf = 0, t0 = 0, ph0 = 0;
+function tick(){
+  const dt = (performance.now()-t0)/1000;
+  state.phase = (ph0 + dt/1.56) % 1;
+  document.getElementById("phase").value = state.phase;
+  render();
+  raf = requestAnimationFrame(tick);
+}
+document.getElementById("play").onchange = e=>{
+  if (e.target.checked){ t0 = performance.now(); ph0 = state.phase; tick(); }
+  else { cancelAnimationFrame(raf); raf = 0; }
+};
+
+/* ---------- 键盘 ---------- */
+window.addEventListener("keydown", e=>{
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "ArrowRight"){ state.dir = (state.dir+1)%8; buildDirs(); render(); }
+  if (e.key === "ArrowLeft"){ state.dir = (state.dir+7)%8; buildDirs(); render(); }
+  if (e.key === "e" || e.key === "E"){
+    const i = faceVariants.indexOf(state.variants.face);
+    state.variants.face = faceVariants[(i+1)%faceVariants.length];
+    buildLibrary(); render();
+  }
+});
+
+function refreshAll(){
+  buildLibrary(); render();
+}
+
+/* ---------- 启动 ----------
+   必须等所有 data URI 图解码完再建 UI：缩略图要读像素算包围盒，
+   图没 ready 时算出来全是空 bbox，部件库就是一排黑卡（第一版踩过） */
+function imgReady(im){
+  return im.complete ? Promise.resolve()
+    : new Promise(r=>{ im.onload = r; im.onerror = r; });
+}
+const waits = [];
+for (const s in IMG) for (const v in IMG[s]) for (const view in IMG[s][v]) waits.push(imgReady(IMG[s][v][view]));
+for (const s in MIMG) for (const v in MIMG[s]) for (const view in MIMG[s][v]) waits.push(imgReady(MIMG[s][v][view]));
+
+function init(){
+  buildDirs(); buildColors(); buildLibrary(); buildPresets();
+  fit();
+  document.getElementById("play").onchange({target:{checked:true}});
+}
+Promise.all(waits).then(init);
+</script>
+</body>
+</html>

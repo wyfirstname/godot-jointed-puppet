@@ -1,0 +1,408 @@
+{
+  "_rig": {
+    "anchor": [
+      128.0,
+      216.0
+    ],
+    "back_dirs": [
+      3,
+      4,
+      5
+    ],
+    "dir_to_view": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        0
+      ],
+      [
+        3,
+        0
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "joints": [
+      {
+        "name": "hip",
+        "parent": "",
+        "pos": [
+          128.0,
+          146.0
+        ]
+      },
+      {
+        "name": "chest",
+        "parent": "hip",
+        "pos": [
+          128.0,
+          110.0
+        ]
+      },
+      {
+        "name": "head",
+        "parent": "chest",
+        "pos": [
+          128.0,
+          100.0
+        ]
+      },
+      {
+        "name": "shoulder_l",
+        "parent": "chest",
+        "pos": [
+          108.0,
+          108.0
+        ]
+      },
+      {
+        "name": "elbow_l",
+        "parent": "shoulder_l",
+        "pos": [
+          102.0,
+          130.0
+        ]
+      },
+      {
+        "name": "shoulder_r",
+        "parent": "chest",
+        "pos": [
+          148.0,
+          108.0
+        ]
+      },
+      {
+        "name": "elbow_r",
+        "parent": "shoulder_r",
+        "pos": [
+          154.0,
+          130.0
+        ]
+      },
+      {
+        "name": "hip_l",
+        "parent": "hip",
+        "pos": [
+          120.0,
+          152.0
+        ]
+      },
+      {
+        "name": "knee_l",
+        "parent": "hip_l",
+        "pos": [
+          119.0,
+          182.0
+        ]
+      },
+      {
+        "name": "hip_r",
+        "parent": "hip",
+        "pos": [
+          136.0,
+          152.0
+        ]
+      },
+      {
+        "name": "knee_r",
+        "parent": "hip_r",
+        "pos": [
+          137.0,
+          182.0
+        ]
+      }
+    ],
+    "near_side": {
+      "n": "",
+      "nw": "l",
+      "s": "",
+      "sw": "r",
+      "w": "r"
+    },
+    "profile": {
+      "n": {
+        "arm": 2.0,
+        "bob": 2.2,
+        "knee": 0.0,
+        "leg": 0.0,
+        "lift": 7.0,
+        "mode": 1
+      },
+      "nw": {
+        "arm": 13.0,
+        "bob": 2.5,
+        "knee": 16.0,
+        "leg": 19.0,
+        "lift": 0.0,
+        "mode": 0
+      },
+      "s": {
+        "arm": 4.0,
+        "bob": 2.2,
+        "knee": 0.0,
+        "leg": 0.0,
+        "lift": 7.0,
+        "mode": 1
+      },
+      "sw": {
+        "arm": 13.0,
+        "bob": 2.5,
+        "knee": 16.0,
+        "leg": 19.0,
+        "lift": 0.0,
+        "mode": 0
+      },
+      "w": {
+        "arm": 12.0,
+        "bob": 3.2,
+        "knee": 22.0,
+        "leg": 26.0,
+        "lift": 0.0,
+        "mode": 0
+      }
+    },
+    "slot_joint": {
+      "arm_l": "shoulder_l",
+      "arm_r": "shoulder_r",
+      "body": "chest",
+      "cape": "chest",
+      "clothes": "chest",
+      "ear": "head",
+      "face": "head",
+      "fore_l": "elbow_l",
+      "fore_r": "elbow_r",
+      "glove_l": "elbow_l",
+      "glove_r": "elbow_r",
+      "hair_back": "head",
+      "hair_front": "head",
+      "hat": "head",
+      "head": "head",
+      "leg_l": "hip_l",
+      "leg_r": "hip_r",
+      "offhand": "elbow_l",
+      "shin_l": "knee_l",
+      "shin_r": "knee_r",
+      "shoes_l": "knee_l",
+      "shoes_r": "knee_r",
+      "shoulder": "chest",
+      "tail": "hip",
+      "weapon": "elbow_r",
+      "wing": "chest"
+    },
+    "slots": [
+      "arm_l",
+      "arm_r",
+      "body",
+      "cape",
+      "clothes",
+      "ear",
+      "face",
+      "fore_l",
+      "fore_r",
+      "glove_l",
+      "glove_r",
+      "hair_back",
+      "hair_front",
+      "hat",
+      "head",
+      "leg_l",
+      "leg_r",
+      "offhand",
+      "shin_l",
+      "shin_r",
+      "shoes_l",
+      "shoes_r",
+      "shoulder",
+      "summon",
+      "tail",
+      "weapon",
+      "wing"
+    ],
+    "views": [
+      "s",
+      "sw",
+      "w",
+      "nw",
+      "n"
+    ]
+  },
+  "generated_by": "tools/dump_layers.gd",
+  "note": "前后关系（z 序）的唯一可编辑副本。用 tools/layer_designer.html 编辑，改完跑 tools/zdump.gd 校验。数字越大越靠近镜头。",
+  "swing": [],
+  "version": 1,
+  "views": [
+    "s",
+    "sw",
+    "w",
+    "nw",
+    "n"
+  ],
+  "z": {
+    "n": {
+      "arm_l": 21,
+      "arm_r": 21,
+      "body": 10,
+      "cape": 22,
+      "clothes": 20,
+      "ear": 31,
+      "face": 0,
+      "fore_l": 21,
+      "fore_r": 21,
+      "glove_l": 21,
+      "glove_r": 21,
+      "hair_back": 31,
+      "hair_front": 0,
+      "hat": 36,
+      "head": 30,
+      "leg_l": 8,
+      "leg_r": 8,
+      "offhand": 8,
+      "shin_l": 9,
+      "shin_r": 9,
+      "shoes_l": 9,
+      "shoes_r": 9,
+      "shoulder": 21,
+      "summon": 0,
+      "tail": 16,
+      "weapon": 21,
+      "wing": 16
+    },
+    "nw": {
+      "arm_l": 21,
+      "arm_r": 20,
+      "body": 10,
+      "cape": 22,
+      "clothes": 20,
+      "ear": 31,
+      "face": 0,
+      "fore_l": 21,
+      "fore_r": 20,
+      "glove_l": 21,
+      "glove_r": 20,
+      "hair_back": 31,
+      "hair_front": 0,
+      "hat": 36,
+      "head": 30,
+      "leg_l": 8,
+      "leg_r": 6,
+      "offhand": 8,
+      "shin_l": 9,
+      "shin_r": 7,
+      "shoes_l": 9,
+      "shoes_r": 7,
+      "shoulder": 21,
+      "summon": 0,
+      "tail": 16,
+      "weapon": 21,
+      "wing": 16
+    },
+    "s": {
+      "arm_l": 13,
+      "arm_r": 13,
+      "body": 10,
+      "cape": 2,
+      "clothes": 20,
+      "ear": 31,
+      "face": 32,
+      "fore_l": 14,
+      "fore_r": 14,
+      "glove_l": 14,
+      "glove_r": 14,
+      "hair_back": 0,
+      "hair_front": 34,
+      "hat": 36,
+      "head": 30,
+      "leg_l": 8,
+      "leg_r": 8,
+      "offhand": 48,
+      "shin_l": 9,
+      "shin_r": 9,
+      "shoes_l": 9,
+      "shoes_r": 9,
+      "shoulder": 26,
+      "summon": 0,
+      "tail": 5,
+      "weapon": 50,
+      "wing": 4
+    },
+    "sw": {
+      "arm_l": 1,
+      "arm_r": 13,
+      "body": 10,
+      "cape": 2,
+      "clothes": 20,
+      "ear": 31,
+      "face": 32,
+      "fore_l": 1,
+      "fore_r": 14,
+      "glove_l": 1,
+      "glove_r": 14,
+      "hair_back": 0,
+      "hair_front": 34,
+      "hat": 36,
+      "head": 30,
+      "leg_l": 6,
+      "leg_r": 8,
+      "offhand": 48,
+      "shin_l": 7,
+      "shin_r": 9,
+      "shoes_l": 7,
+      "shoes_r": 9,
+      "shoulder": 26,
+      "summon": 0,
+      "tail": 5,
+      "weapon": 50,
+      "wing": 4
+    },
+    "w": {
+      "arm_l": 8,
+      "arm_r": 13,
+      "body": 10,
+      "cape": 2,
+      "clothes": 20,
+      "ear": 31,
+      "face": 32,
+      "fore_l": 9,
+      "fore_r": 14,
+      "glove_l": 9,
+      "glove_r": 14,
+      "hair_back": 0,
+      "hair_front": 34,
+      "hat": 36,
+      "head": 30,
+      "leg_l": 6,
+      "leg_r": 8,
+      "offhand": 48,
+      "shin_l": 7,
+      "shin_r": 9,
+      "shoes_l": 7,
+      "shoes_r": 9,
+      "shoulder": 26,
+      "summon": 0,
+      "tail": 5,
+      "weapon": 50,
+      "wing": 4
+    }
+  }
+}
